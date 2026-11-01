@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Hand Nebula · 手势粒子星云</title>
+  <style>
+    :root{color-scheme:dark;--bg:#070b16;--panel:rgba(13,20,38,.82);--line:rgba(145,176,255,.18);--text:#edf3ff;--muted:#8f9bb6;--cyan:#72e6ff;--violet:#8d7cff;--ok:#80f2c2;}
+    *{box-sizing:border-box} html,body{margin:0;min-height:100%;background:radial-gradient(circle at 75% 18%,#172653 0,#0b1224 34%,var(--bg) 72%);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text)}
+    body{padding:clamp(16px,3vw,36px);overflow-x:hidden}.app{max-width:1440px;margin:auto;display:grid;gap:18px}.topbar{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;padding:6px 2px 8px}.brand{display:flex;align-items:center;gap:12px}.brand-mark{width:38px;height:38px;border-radius:12px;background:conic-gradient(from 210deg,var(--cyan),var(--violet),#f68dff,var(--cyan));box-shadow:0 0 28px #657dff88;position:relative}.brand-mark:after{content:"";position:absolute;inset:8px;border-radius:50%;background:#0a1020;border:1px solid #c8e8ff88}.eyebrow{color:var(--cyan);font-size:11px;letter-spacing:.2em;text-transform:uppercase;font-weight:700}.title{margin:3px 0 0;font-size:clamp(22px,3vw,34px);letter-spacing:-.04em}.intro{color:var(--muted);font-size:13px;max-width:430px;line-height:1.55;text-align:right}.workspace{display:grid;grid-template-columns:minmax(280px,.82fr) minmax(0,1.6fr);gap:18px;min-height:min(720px,calc(100vh - 145px))}.panel{border:1px solid var(--line);background:linear-gradient(145deg,rgba(24,33,60,.82),rgba(7,12,26,.88));border-radius:24px;box-shadow:0 20px 70px #0005,inset 0 1px #ffffff0a;overflow:hidden}.camera-panel{display:flex;flex-direction:column}.panel-head{display:flex;justify-content:space-between;align-items:center;padding:18px 20px 14px}.panel-title{font-size:13px;font-weight:750;letter-spacing:.02em}.live{display:inline-flex;align-items:center;gap:7px;color:var(--ok);font-size:11px}.live i{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 12px var(--ok);display:block}.video-wrap{position:relative;margin:0 14px;border-radius:18px;overflow:hidden;aspect-ratio:4/3;background:#050913;border:1px solid #ffffff12}.video-wrap video,.video-wrap canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.video-wrap video{transform:scaleX(-1)}.video-wrap canvas{pointer-events:none}.camera-empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:24px;color:var(--muted);font-size:13px;line-height:1.6;background:linear-gradient(140deg,#0b1630cc,#08101ee8)}.camera-empty.hidden{display:none}.camera-empty strong{display:block;color:var(--text);font-size:15px;margin-bottom:6px}.controls{display:flex;align-items:center;gap:10px;padding:16px 14px 0}.button{border:1px solid #86e8ff55;background:linear-gradient(135deg,#203d6d,#17284f);color:var(--text);border-radius:12px;padding:10px 14px;font:600 12px inherit;cursor:pointer;transition:.2s transform,.2s border-color,.2s background}.button:hover{transform:translateY(-1px);border-color:#9cefffcc}.button:disabled{opacity:.5;cursor:wait}.status{flex:1;color:var(--muted);font-size:11px;line-height:1.4}.metrics{margin-top:auto;padding:16px 20px 20px;display:grid;grid-template-columns:1fr 1fr;gap:10px}.metric{border-top:1px solid var(--line);padding-top:11px}.metric-label{color:var(--muted);font-size:10px;letter-spacing:.12em;text-transform:uppercase}.metric-value{font-size:24px;line-height:1.2;margin-top:4px;font-variant-numeric:tabular-nums}.metric-value small{font-size:12px;color:var(--muted);font-weight:500}.scene-panel{position:relative;min-height:480px;background:#050916;border-color:#31427588}.scene-panel:before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 50% 45%,#263b7b1f 0,transparent 48%),linear-gradient(120deg,#060b16,#081128 60%,#0b1020);pointer-events:none}.scene-head{position:absolute;z-index:2;left:20px;right:20px;top:18px;display:flex;justify-content:space-between;align-items:flex-start;gap:14px;pointer-events:none}.scene-copy{max-width:300px}.scene-copy .panel-title{font-size:16px}.scene-copy p{margin:7px 0 0;color:var(--muted);font-size:11px;line-height:1.45}.scene-tools{display:flex;align-items:center;gap:7px;pointer-events:auto;flex-wrap:wrap;justify-content:flex-end}.model-picker{display:flex;align-items:center;gap:6px;color:#9eafd1;font-size:10px}.model-picker select{appearance:none;border:1px solid #91a5e34d;background:#111936dd;color:#e8efff;border-radius:9px;padding:7px 24px 7px 9px;font:600 11px inherit;outline:none}.color-picker{width:28px;height:28px;padding:3px;border:1px solid #91a5e34d;background:#111936dd;border-radius:9px;display:grid;place-items:center;cursor:pointer}.color-picker input{width:18px;height:18px;padding:0;border:0;background:none;border-radius:5px;cursor:pointer}.icon-button{width:28px;height:28px;border:1px solid #91a5e34d;background:#111936dd;color:#e8efff;border-radius:9px;font-size:16px;line-height:1;cursor:pointer}.scene-badge{padding:7px 10px;border:1px solid #8f9cff33;background:#111936aa;border-radius:999px;color:#b5c1e7;font-size:10px;letter-spacing:.1em;text-transform:uppercase}.scene-canvas{position:absolute;inset:0;width:100%;height:100%;min-height:480px}.scene-footer{position:absolute;z-index:2;left:20px;right:20px;bottom:18px;display:flex;justify-content:space-between;align-items:center;pointer-events:none}.progress{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:11px}.progress-track{width:118px;height:5px;border-radius:9px;background:#ffffff12;overflow:hidden}.progress-fill{height:100%;width:0;background:linear-gradient(90deg,var(--cyan),var(--violet));border-radius:inherit;transition:width .1s linear}.hint{color:#7180a8;font-size:10px;text-align:right}.footnote{color:#64708e;font-size:11px;text-align:center;margin-top:-4px}@media (max-width:820px){body{padding:14px}.topbar{align-items:flex-start;flex-direction:column;gap:8px}.intro{text-align:left}.workspace{grid-template-columns:1fr;min-height:0}.scene-panel{min-height:58vh}.scene-canvas{min-height:58vh}.camera-panel{order:2}.scene-panel{order:1}.metrics{margin-top:0}.video-wrap{max-width:560px;margin-left:auto;margin-right:auto;width:calc(100% - 28px)}}@media (max-width:820px){.scene-head{position:relative;left:0;right:0;top:0;display:block;padding:18px 20px 0}.scene-copy{max-width:none}.scene-tools{justify-content:flex-start;margin-top:12px}.scene-panel{overflow:hidden}}@media (prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important}}
+  \n    .scene-panel:after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 50% 45%,rgba(83,112,190,.08),transparent 50%),linear-gradient(180deg,rgba(0,0,0,.08),transparent 35%,rgba(0,0,0,.18));mix-blend-mode:screen;opacity:.7}\n</style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark" aria-hidden="true"></span><div><div class="eyebrow">Realtime gesture lab</div><h1 class="title">Hand Nebula</h1></div></div>
+      <p class="intro">张开手，让星云释放；握拳或捏合，让粒子收拢。未检测到手部时，星云会停留在当前状态。</p>
+    </header>
+    <section class="workspace" aria-label="手势粒子控制台">
+      <aside class="panel camera-panel">
+        <div class="panel-head"><div class="panel-title">摄像头 / 手部追踪</div><div class="live"><i></i><span id="trackingState">等待启动</span></div></div>
+        <div class="video-wrap"><video id="video" autoplay playsinline muted></video><canvas id="handCanvas"></canvas><div class="camera-empty" id="cameraEmpty"><div><strong>准备捕捉你的手势</strong>点击下方按钮开启摄像头<br>建议保持手掌位于画面中央</div></div></div>
+        <div class="controls"><button class="button" id="startButton">开启摄像头</button><div class="status" id="statusText">浏览器将请求摄像头权限</div></div>
+        <div class="metrics"><div class="metric"><div class="metric-label">握拳进度</div><div class="metric-value" id="progressValue">0<span class="metric-value"><small>%</small></span></div></div><div class="metric"><div class="metric-label">关键点</div><div class="metric-value" id="landmarkValue">—<small>/ 21</small></div></div></div>
+      </aside>
+      <section class="panel scene-panel" aria-label="3D粒子星云">
+        <div class="scene-head"><div class="scene-copy"><div class="panel-title">3D 独立粒子</div><p>每颗粒子独立渲染 · 张开散开 · 握拳成形 · 捏合爆发</p></div><div class="scene-tools"><label class="model-picker"><span>模型</span><select id="modelSelect"><option value="nebula">星云</option><option value="logo">AI 标志</option><option value="heart">爱心</option><option value="flower">花朵</option><option value="saturn">土星</option><option value="fireworks">烟花</option><option value="earth">地球</option><option value="mountains">千里江山</option><option value="epiphyllum">昙花</option></select></label><label class="color-picker" title="调整粒子颜色"><input id="colorPicker" type="color" value="#69e8ff" aria-label="粒子颜色"></label><button class="icon-button" id="fullscreenButton" type="button" aria-label="全屏">⛶</button><span class="scene-badge" id="modeBadge">待机</span></div></div>
+        <div id="sceneCanvas" class="scene-canvas"></div>
+        <div class="scene-footer"><div class="progress"><span>OPEN</span><div class="progress-track"><div class="progress-fill" id="progressFill"></div></div><span>CLOSED</span></div><div class="hint">单手 · 21 landmarks · 平滑滤波</div></div>
+      </section>
+    </section>
+    <div class="footnote">推荐使用 Chrome / Edge，并通过 localhost 或 HTTPS 打开以获得摄像头权限。</div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+  <script>
+    (() => {
+      'use strict';
+      const $ = (id) => document.getElementById(id);
+      const video = $('video'), handCanvas = $('handCanvas'), handCtx = handCanvas.getContext('2d');
+      const sceneHost = $('sceneCanvas'), startButton = $('startButton'), statusText = $('statusText');
+      const modelSelect = $('modelSelect'), colorPicker = $('colorPicker'), fullscreenButton = $('fullscreenButton');
+      const trackingState = $('trackingState'), cameraEmpty = $('cameraEmpty'), progressValue = $('progressValue');
+      const landmarkValue = $('landmarkValue'), progressFill = $('progressFill'), modeBadge = $('modeBadge');
+      let camera, hands, stream, hasHand = false, handCloseProgress = 0, targetProgress = 0, lastSeen = 0;
+      let lastIndexX = null, lastIndexY = null, lastPalmX = null, lastPalmY = null, targetZoom = 7.1, currentModel = 'nebula';
+      let perturbTargetX = 0, perturbTargetY = 0, perturbX = 0, perturbY = 0, perturbVelocityX = 0, perturbVelocityY = 0, lastValidGestureAt = 0, lastRenderAt = performance.now();
+      let targetYaw = 0, targetPitch = 0, targetRoll = 0, trailDistanceCarry = 0, trailPulse = 0, trailDirX = 0, trailDirY = 0;
+      let pinchArmed = true, burstActive = false, burstFrame = 0;
+      let scene, renderer, particleGroup, particleCloud, trailCloud, glowCloud, particleMaterial, trailMaterial, glowMaterial, particleGeometry, trailGeometry, glowGeometry, animationId, motionPhase = 0;
+      // Keep the GPU workload bounded on phones and low-core devices while preserving detail on desktop.
+      const constrainedDevice = window.matchMedia('(max-width:820px)').matches || (navigator.hardwareConcurrency || 8) <= 4;
+      const COUNT = constrainedDevice ? 8200 : 14000;
+      const base = new Float32Array(COUNT * 3), modelTarget = new Float32Array(COUNT * 3), positions = new Float32Array(COUNT * 3), trailPositions = new Float32Array(COUNT * 3), colors = new Float32Array(COUNT * 3), sizes = new Float32Array(COUNT), burstDirections = new Float32Array(COUNT * 3), burstSeeds = new Float32Array(COUNT);
+      const colorOpen = new THREE.Color('#45d9ff'), colorClosed = new THREE.Color('#ff61d4'), tempColor = new THREE.Color(), pink = new THREE.Color('#ff61d4');
+      const P0 = Object.freeze({x:0,y:1.2,z:0});
+      class Kalman1D{
+        constructor(processNoise,measurementNoise){ this.q=processNoise; this.r=measurementNoise; this.x=0; this.p=1; this.ready=false; }
+        reset(){ this.x=0; this.p=1; this.ready=false; }
+        update(measurement){ if(!this.ready){ this.x=measurement; this.p=1; this.ready=true; return this.x; } this.p+=this.q; const gain=this.p/(this.p+this.r); this.x+=gain*(measurement-this.x); this.p*=(1-gain); return this.x; }
+      }
+      class OneEuroFilter{
+        constructor(minCutoff,beta,dCutoff){ this.minCutoff=minCutoff; this.beta=beta; this.dCutoff=dCutoff; this.xPrev=0; this.dxPrev=0; this.tPrev=0; this.ready=false; }
+        reset(){ this.xPrev=0; this.dxPrev=0; this.tPrev=0; this.ready=false; }
+        alpha(cutoff,dt){ const tau=1/(2*Math.PI*cutoff); return 1/(1+tau/Math.max(dt,.001)); }
+        update(value,time){ if(!this.ready){ this.xPrev=value; this.tPrev=time; this.ready=true; return value; } const dt=Math.max(.001,time-this.tPrev); const derivative=(value-this.xPrev)/dt; const derivativeHat=this.dxPrev+this.alpha(this.dCutoff,dt)*(derivative-this.dxPrev); const cutoff=this.minCutoff+this.beta*Math.abs(derivativeHat); const filtered=this.xPrev+this.alpha(cutoff,dt)*(value-this.xPrev); this.dxPrev=derivativeHat; this.xPrev=filtered; this.tPrev=time; return filtered; }
+      }
+      const filteredLandmarks=Array.from({length:21},()=>({x:0,y:0,z:0}));
+      const kalmanX=Array.from({length:21},()=>new Kalman1D(.008,.12)), kalmanY=Array.from({length:21},()=>new Kalman1D(.008,.12));
+      const euroX=Array.from({length:21},()=>new OneEuroFilter(1.0,.007,1.0)), euroY=Array.from({length:21},()=>new OneEuroFilter(1.0,.007,1.0));
+      const historyX=Array.from({length:21},()=>[]), historyY=Array.from({length:21},()=>[]); let landmarkFilterReady=false;
+
+      function randn(){ let u=0,v=0; while(!u)u=Math.random(); while(!v)v=Math.random(); return Math.sqrt(-2*Math.log(u))*Math.cos(Math.PI*2*v); }
+      function smoothstep(a,b,x){ const t=Math.max(0,Math.min(1,(x-a)/(b-a))); return t*t*(3-2*t); }
+      function distance(a,b){ return Math.hypot(a.x-b.x,a.y-b.y,a.z-b.z); }
+      function pushHistory(history,value){ history.push(value); if(history.length>5)history.shift(); const mean=history.reduce((sum,item)=>sum+item,0)/history.length; const variance=history.reduce((sum,item)=>sum+(item-mean)*(item-mean),0)/history.length; return {mean,std:Math.sqrt(variance)}; }
+      function filterLandmarks(rawLandmarks){
+        const now=performance.now()/1000; landmarkFilterReady=true;
+        for(let i=0;i<21;i++){
+          const raw=rawLandmarks[i], kalmanFilteredX=kalmanX[i].update(raw.x), kalmanFilteredY=kalmanY[i].update(raw.y);
+          const euroFilteredX=euroX[i].update(kalmanFilteredX,now), euroFilteredY=euroY[i].update(kalmanFilteredY,now);
+          const statsX=pushHistory(historyX[i],euroFilteredX), statsY=pushHistory(historyY[i],euroFilteredY);
+          filteredLandmarks[i].x=statsX.std<.003&&historyX[i].length===5?statsX.mean:euroFilteredX;
+          filteredLandmarks[i].y=statsY.std<.003&&historyY[i].length===5?statsY.mean:euroFilteredY;
+          filteredLandmarks[i].z=raw.z;
+        }
+        return filteredLandmarks;
+      }
+      function resetLandmarkFilters(){ if(!landmarkFilterReady)return; kalmanX.forEach((filter)=>filter.reset()); kalmanY.forEach((filter)=>filter.reset()); euroX.forEach((filter)=>filter.reset()); euroY.forEach((filter)=>filter.reset()); historyX.forEach((history)=>history.length=0); historyY.forEach((history)=>history.length=0); landmarkFilterReady=false; }
+      function calcCloseProgress(lm){
+        const palm = Math.max(distance(lm[5],lm[17]),0.001);
+        const tips=[8,12,16,20], mids=[6,10,14,18];
+        const curl = tips.map((tip,i)=>{
+          const tipD=distance(lm[tip],lm[0])/palm, midD=distance(lm[mids[i]],lm[0])/palm;
+          const folded = 1-smoothstep(.92,1.65,tipD); const foldedMid=1-smoothstep(1.15,1.9,midD);
+          return Math.max(folded, foldedMid*.92);
+        }).reduce((a,b)=>a+b,0)/4;
+        const pinch = 1-smoothstep(.2,.68,distance(lm[4],lm[8])/palm);
+        return Math.max(0,Math.min(1,curl*.9+pinch*.1));
+      }
+      function seedPoint(i, model){
+        const j=i*3, t=Math.random()*Math.PI*2, u=Math.random(), v=Math.random(); let x=0,y=0,z=0;
+        if(model==='logo'){
+          // Stable point strokes spell “AI”, so the closed-hand state forms a readable mark.
+          const stroke=i%6, q=Math.random(), jitter=()=> (Math.random()-.5)*.055;
+          if(stroke===0){ x=-1.45+q*.85; y=-1.05+q*2.1; }
+          else if(stroke===1){ x=-.6+q*.85; y=1.05-q*2.1; }
+          else if(stroke===2){ x=-1.12+q*.9; y=.02+jitter(); }
+          else if(stroke===3){ x=.72+jitter(); y=-1.05+q*2.1; }
+          else if(stroke===4){ x=.15+q*1.15; y=1.05+jitter(); }
+          else { x=.15+q*1.15; y=-1.05+jitter(); }
+          x+=jitter(); y+=jitter(); z=(Math.random()-.5)*.22;
+        }
+        else if(model==='heart'){ const q=t; x=1.55*Math.pow(Math.sin(q),3); y=1.25*Math.cos(q)-.5*Math.cos(2*q)-.25*Math.cos(3*q)-.12*Math.cos(4*q); z=(Math.random()-.5)*.52; const fill=.35+Math.random()*.7; x*=fill;y*=fill; }
+        else if(model==='flower'){ const r=(.55+1.7*Math.abs(Math.sin(4*t)))*Math.sqrt(u); x=Math.cos(t)*r;y=Math.sin(t)*r*.78;z=(Math.random()-.5)*.34+Math.cos(4*t)*.18; }
+        else if(model==='saturn'){ if(i<COUNT*.42){ const phi=Math.acos(1-2*u), rr=1.28; x=rr*Math.sin(phi)*Math.cos(t);y=rr*Math.cos(phi);z=rr*Math.sin(phi)*Math.sin(t); } else { const rr=1.65+Math.random()*.95; x=Math.cos(t)*rr;y=(Math.random()-.5)*.12;z=Math.sin(t)*rr; } }
+        else if(model==='fireworks'){ const ray=Math.floor(Math.random()*28), a=ray/28*Math.PI*2+(Math.random()-.5)*.07, r=.25+Math.pow(u,.42)*3.15; x=Math.cos(a)*r;y=Math.sin(a)*r;z=(Math.random()-.5)*.55+(r-1.5)*.12; }
+        else if(model==='earth'){ const phi=Math.acos(1-2*u), rr=1.55+randn()*.035; x=rr*Math.sin(phi)*Math.cos(t);y=rr*Math.cos(phi);z=rr*Math.sin(phi)*Math.sin(t); }
+        else if(model==='mountains'){ x=(Math.random()-.5)*5.5; z=(Math.random()-.5)*2.2; const ridge=Math.sin(x*1.3)*.7+Math.sin(x*3.2)*.35+Math.cos(z*1.7)*.2; y=-.75+ridge+(Math.random()-.5)*.22; if(Math.random()<.22)y+=Math.random()*.7; }
+        else if(model==='epiphyllum'){ const petal=Math.floor(Math.random()*12), a=petal/12*Math.PI*2+(Math.random()-.5)*.12, r=.25+Math.pow(u,.65)*2.2; x=Math.cos(a)*r;y=Math.sin(a)*r*.63;z=(Math.random()-.5)*.18 + Math.sin(r*3)*.22; }
+        else { const r=Math.pow(u,.58)*3.25, a=t; x=Math.cos(a)*r+randn()*.12;y=Math.sin(a)*r*.62+randn()*.12;z=(Math.random()-.5)*2.2*(1-r/4.2)+randn()*.18; }
+        modelTarget[j]=x;modelTarget[j+1]=y;modelTarget[j+2]=z;
+      }
+      function setModel(model){ currentModel=model; for(let i=0;i<COUNT;i++)seedPoint(i,model); if(model==='logo' && particleGeometry){ base.set(modelTarget); positions.set(base); trailPositions.set(base); } modeBadge.textContent=modelSelect.options[modelSelect.selectedIndex].text; }
+      function setParticleColor(hex){ colorOpen.set(hex); colorClosed.copy(colorOpen).lerp(pink,.72); }
+      function triggerBurst(){ burstActive=true; burstFrame=0; modeBadge.textContent='爆发'; }
+      function wrapAngle(angle){ return Math.atan2(Math.sin(angle),Math.cos(angle)); }
+
+      function initThree(){
+        scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x050916,.028);
+        const camera3d = new THREE.PerspectiveCamera(58,1,.1,100); camera3d.position.z=7.1; camera3d.lookAt(P0.x,P0.y,P0.z); scene.userData.camera=camera3d;
+        renderer = new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:'high-performance'}); renderer.setPixelRatio(Math.min(devicePixelRatio,constrainedDevice?1.35:1.85)); renderer.setClearColor(0x000000,0); sceneHost.appendChild(renderer.domElement);
+        for(let i=0;i<COUNT;i++){
+          const idx=i*3; sizes[i]=.12+Math.random()*.34; const dx=randn(),dy=randn(),dz=randn(), inv=1/Math.max(Math.hypot(dx,dy,dz),.001); burstDirections[idx]=dx*inv; burstDirections[idx+1]=dy*inv; burstDirections[idx+2]=dz*inv; burstSeeds[i]=.65+Math.random()*.75;
+          const c=new THREE.Color().setHSL(.53+Math.random()*.17,.9,.57+Math.random()*.2); colors[idx]=c.r; colors[idx+1]=c.g; colors[idx+2]=c.b;
+        }
+        setModel('nebula'); base.set(modelTarget); positions.set(base); trailPositions.set(base);
+        const pointVertex=`attribute float aSize; attribute vec3 aColor; varying vec3 vColor; uniform float uClose; uniform float uSizeScale; void main(){vColor=aColor;vec4 mv=modelViewMatrix*vec4(position,1.0);float size=aSize*(1.35-uClose*.38)*uSizeScale*(78.0/-mv.z);gl_PointSize=clamp(size,.55,8.0);gl_Position=projectionMatrix*mv;}`;
+        const pointFragment=`varying vec3 vColor; uniform float uClose; uniform float uAlpha; uniform float uSoft; void main(){float d=length(gl_PointCoord-.5);float edge=mix(.38,.06,uSoft);float alpha=1.0-smoothstep(edge,.5,d);if(alpha<.01) discard;vec3 col=mix(vColor,vColor*.42,uClose);gl_FragColor=vec4(col,alpha*uAlpha);}`;
+        const makeMaterial=(sizeScale,alpha,soft,blending)=>new THREE.ShaderMaterial({transparent:true,depthWrite:false,blending,uniforms:{uClose:{value:0},uSizeScale:{value:sizeScale},uAlpha:{value:alpha},uSoft:{value:soft}},vertexShader:pointVertex,fragmentShader:pointFragment});
+        particleGeometry=new THREE.BufferGeometry(); particleGeometry.setAttribute('position',new THREE.BufferAttribute(positions,3)); particleGeometry.setAttribute('aColor',new THREE.BufferAttribute(colors,3)); particleGeometry.setAttribute('aSize',new THREE.BufferAttribute(sizes,1));
+        trailGeometry=new THREE.BufferGeometry(); trailGeometry.setAttribute('position',new THREE.BufferAttribute(trailPositions,3)); trailGeometry.setAttribute('aColor',particleGeometry.getAttribute('aColor')); trailGeometry.setAttribute('aSize',particleGeometry.getAttribute('aSize'));
+        glowGeometry=new THREE.BufferGeometry(); glowGeometry.setAttribute('position',particleGeometry.getAttribute('position')); glowGeometry.setAttribute('aColor',particleGeometry.getAttribute('aColor')); glowGeometry.setAttribute('aSize',particleGeometry.getAttribute('aSize'));
+        particleMaterial=makeMaterial(1,1,.0,THREE.NormalBlending); trailMaterial=makeMaterial(.72,.22,.45,THREE.AdditiveBlending); glowMaterial=makeMaterial(2.7,.11,1,THREE.AdditiveBlending);
+        glowCloud=new THREE.Points(glowGeometry,glowMaterial); trailCloud=new THREE.Points(trailGeometry,trailMaterial); particleCloud=new THREE.Points(particleGeometry,particleMaterial); particleGroup=new THREE.Group(); particleGroup.add(glowCloud,trailCloud,particleCloud); scene.add(particleGroup); resizeScene(); window.addEventListener('resize',resizeScene);
+      }
+      function resizeScene(){ if(!renderer)return; const rect=sceneHost.getBoundingClientRect(); const w=Math.max(1,rect.width),h=Math.max(1,rect.height); renderer.setSize(w,h,false); scene.userData.camera.aspect=w/h; scene.userData.camera.updateProjectionMatrix(); const fitScale=Math.min(1,Math.max(.6,w/800)); if(particleGroup)particleGroup.scale.setScalar(fitScale); }
+      function render(){
+        animationId=requestAnimationFrame(render);
+        if(hasHand) motionPhase += .0045;
+        if(burstActive){ burstFrame += .045; if(burstFrame>=1){ burstFrame=1; burstActive=false; } }
+        const p=handCloseProgress, spread=1.42-p*.9, wobble=motionPhase; tempColor.copy(colorOpen).lerp(colorClosed,p); trailPulse*=.9;
+        const burstWave=Math.sin(burstFrame*Math.PI), burstScale=burstWave*2.45;
+        for(let i=0;i<COUNT;i++){
+          const idx=i*3;
+          base[idx]+=(modelTarget[idx]-base[idx])*.055; base[idx+1]+=(modelTarget[idx+1]-base[idx+1])*.055; base[idx+2]+=(modelTarget[idx+2]-base[idx+2])*.055;
+          const bx=base[idx], by=base[idx+1], bz=base[idx+2], radius=Math.hypot(bx,by)+.001;
+          const swirl=(wobble*.7+radius*.12)*(0.3+p*.9), cs=Math.cos(swirl), sn=Math.sin(swirl);
+          let tx=(bx*cs-by*sn)*spread*(1-p*.12), ty=(bx*sn+by*cs)*spread*(1-p*.12), tz=bz*spread+Math.sin(wobble*1.6+radius*2.1)*.045*(1-p);
+          if(burstWave){ const amount=burstScale*burstSeeds[i]; tx+=burstDirections[idx]*amount; ty+=burstDirections[idx+1]*amount; tz+=burstDirections[idx+2]*amount; }
+          positions[idx]+=(tx-positions[idx])*.07; positions[idx+1]+=(ty-positions[idx+1])*.07; positions[idx+2]+=(tz-positions[idx+2])*.07;
+          const tailLength=trailPulse*(.16+burstWave*.5)*(0.35+((i*37)%100)/100);
+          const trailX=positions[idx]-trailDirX*tailLength, trailY=positions[idx+1]-trailDirY*tailLength, trailZ=positions[idx+2];
+          trailPositions[idx]+=(trailX-trailPositions[idx])*(burstWave?.12:(hasHand?.2:.3)); trailPositions[idx+1]+=(trailY-trailPositions[idx+1])*(burstWave?.12:(hasHand?.2:.3)); trailPositions[idx+2]+=(trailZ-trailPositions[idx+2])*(burstWave?.12:(hasHand?.2:.3));
+          const shimmer=.82+Math.sin(i*.017+wobble)*.18; colors[idx]=tempColor.r*shimmer; colors[idx+1]=tempColor.g*shimmer; colors[idx+2]=tempColor.b*shimmer;
+        }
+        const camera3d=scene.userData.camera; camera3d.position.z+=(targetZoom-camera3d.position.z)*.08;
+        particleGeometry.attributes.position.needsUpdate=true; trailGeometry.attributes.position.needsUpdate=true; particleGeometry.attributes.aColor.needsUpdate=true;
+        [particleMaterial,trailMaterial,glowMaterial].forEach((material)=>{ material.uniforms.uClose.value=p; });
+        const now=performance.now(), dt=Math.min(.033,Math.max(.001,(now-lastRenderAt)/1000)); lastRenderAt=now;
+        if(now-lastValidGestureAt<=600){ perturbX+=(perturbTargetX-perturbX)*.12; perturbY+=(perturbTargetY-perturbY)*.12; perturbVelocityX*=.82; perturbVelocityY*=.82; }
+        else { const ax=8*(0-perturbX)-.85*perturbVelocityX, ay=8*(0-perturbY)-.85*perturbVelocityY; perturbVelocityX+=ax*dt; perturbVelocityY+=ay*dt; perturbX+=perturbVelocityX*dt; perturbY+=perturbVelocityY*dt; if(Math.abs(perturbX)<.0005&&Math.abs(perturbVelocityX)<.0005){perturbX=0;perturbVelocityX=0;} if(Math.abs(perturbY)<.0005&&Math.abs(perturbVelocityY)<.0005){perturbY=0;perturbVelocityY=0;} }
+        if(particleGroup){ particleGroup.position.set(P0.x+perturbX,P0.y+perturbY,P0.z); particleGroup.rotation.y+=wrapAngle(targetYaw-particleGroup.rotation.y)*.2; particleGroup.rotation.x+=wrapAngle(targetPitch-particleGroup.rotation.x)*.2; particleGroup.rotation.z+=wrapAngle(targetRoll-particleGroup.rotation.z)*.2; }
+        renderer.render(scene,camera3d);
+      }
+
+      function onResults(results){
+        const rawLandmarks=results.multiHandLandmarks?.[0]||null, lm=rawLandmarks?filterLandmarks(rawLandmarks):null;
+        const width=video.videoWidth||640,height=video.videoHeight||480; if(handCanvas.width!==width){handCanvas.width=width;handCanvas.height=height;}
+        handCtx.clearRect(0,0,width,height);
+        if(lm){
+          hasHand=true; lastSeen=performance.now(); targetProgress=calcCloseProgress(lm); landmarkValue.innerHTML='21<small>/ 21</small>'; trackingState.textContent='追踪中'; if(!burstActive) modeBadge.textContent=targetProgress>.62?'聚集中':'展开中';
+          const palmScale=Math.max(distance(lm[5],lm[17]),.001), palmCenter={x:(lm[0].x+lm[5].x+lm[9].x+lm[13].x+lm[17].x)/5,y:(lm[0].y+lm[5].y+lm[9].y+lm[13].y+lm[17].y)/5}, index=lm[8], pinch=1-smoothstep(.18,.62,distance(lm[4],lm[8])/palmScale);
+          lastValidGestureAt=performance.now();
+          const deadzone=(value)=>Math.abs(value)<=.08?0:Math.sign(value)*(Math.abs(value)-.08)/.92;
+          const offsetX=deadzone(.5-palmCenter.x), offsetY=deadzone(.5-palmCenter.y);
+          perturbTargetX=Math.max(-.6,Math.min(.6,Math.tanh(offsetX*3)*.15)); perturbTargetY=Math.max(-.6,Math.min(.6,Math.tanh(offsetY*3)*.15));
+          const palmRoll=Math.atan2(lm[17].y-lm[5].y,lm[17].x-lm[5].x); targetRoll=Math.max(-1.2,Math.min(1.2,-palmRoll));
+          if(pinch<.28) pinchArmed=true; else if(pinch>.72 && pinchArmed){ triggerBurst(); pinchArmed=false; }
+          if(lastIndexX!==null){ const dx=index.x-lastIndexX, dy=index.y-lastIndexY; targetYaw=wrapAngle(targetYaw+dx*4.8); targetPitch=Math.max(-1.15,Math.min(1.15,targetPitch+dy*2.2)); targetZoom=Math.max(4.5,Math.min(9.6,7.1+(distance(lm[4],lm[8])/palmScale-.6)*4.2)); }
+          if(lastPalmX!==null){ const mdx=palmCenter.x-lastPalmX, mdy=palmCenter.y-lastPalmY, travel=Math.hypot(mdx,mdy); if(travel>.001){ trailDirX=mdx/travel; trailDirY=mdy/travel; trailDistanceCarry+=travel; const emissions=Math.min(10,Math.floor(trailDistanceCarry/.012)); if(emissions>0){ trailDistanceCarry-=emissions*.012; trailPulse=Math.min(1,trailPulse+emissions*.1); } } }
+          lastIndexX=index.x; lastIndexY=index.y; lastPalmX=palmCenter.x; lastPalmY=palmCenter.y;
+          handCtx.save(); drawConnectors(handCtx,lm,HAND_CONNECTIONS,{color:'#8ceaff',lineWidth:2}); drawLandmarks(handCtx,lm,{color:'#ffffff',lineWidth:1,radius:3}); handCtx.restore();
+        }
+        else if(performance.now()-lastSeen>180){ hasHand=false; lastIndexX=null; lastIndexY=null; lastPalmX=null; lastPalmY=null; pinchArmed=true; resetLandmarkFilters(); trackingState.textContent='未检测到手'; modeBadge.textContent='保持当前'; landmarkValue.innerHTML='—<small>/ 21</small>'; }
+      }
+      function tickProgress(){ handCloseProgress += (targetProgress-handCloseProgress)*.2; const pct=Math.round(handCloseProgress*100); progressValue.innerHTML=pct+'<span class="metric-value"><small>%</small></span>'; progressFill.style.width=pct+'%'; }
+      async function startCamera(){
+        if(stream)return; startButton.disabled=true; statusText.textContent='正在请求摄像头权限…';
+        try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:1280},height:{ideal:720}},audio:false}); video.srcObject=stream; await video.play(); cameraEmpty.classList.add('hidden'); statusText.textContent='摄像头已连接，伸出一只手'; startButton.textContent='摄像头已开启'; hands=new Hands({locateFile:(file)=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`}); hands.setOptions({maxNumHands:1,modelComplexity:1,minDetectionConfidence:.68,minTrackingConfidence:.62}); hands.onResults(onResults); camera=new Camera(video,{onFrame:async()=>{if(hands)await hands.send({image:video})},width:1280,height:720}); camera.start(); }
+        catch(err){ console.error(err); stream?.getTracks().forEach((track)=>track.stop()); stream=null; video.srcObject=null; statusText.textContent='无法访问摄像头，请检查权限或使用 HTTPS / localhost'; startButton.disabled=false; }
+      }
+      modelSelect.addEventListener('change',()=>setModel(modelSelect.value));
+      colorPicker.addEventListener('input',(e)=>setParticleColor(e.target.value));
+      fullscreenButton.addEventListener('click',async()=>{ try{ if(!document.fullscreenElement) await sceneHost.parentElement.requestFullscreen(); else await document.exitFullscreen(); }catch(err){ console.warn('fullscreen unavailable',err); } });
+      startButton.addEventListener('click',startCamera);
+      window.addEventListener('beforeunload',()=>stream?.getTracks().forEach((track)=>track.stop()));
+      initThree(); render(); setInterval(tickProgress,16);
+      if(!navigator.mediaDevices?.getUserMedia){ statusText.textContent='当前环境不支持摄像头 API'; startButton.disabled=true; }
+       else setTimeout(startCamera,400);
+    })();
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
