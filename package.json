@@ -1,0 +1,30 @@
+{
+  "name": "dsh-shell-bridge",
+  "version": "1.1.0",
+  "description": "DSH Shell Bridge bundle (the implementation lives in dsh-shell-bridge/)",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dsh-shell-bridge/index.js",
+  "exports": {
+    ".": "./dsh-shell-bridge/index.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dsh-shell-bridge/index.js",
+    "dsh-shell-bridge/cordis.patch.yml",
+    "dsh-shell-bridge/README.md",
+    "dsh-shell-bridge/CHANGELOG.md",
+    "dsh-shell-bridge/package.json"
+  ],
+  "engines": { "node": ">=22.19.0" },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": ">=4.0.0 <5.0.0",
+    "@deepseek-ai/dsh-tools": ">=0.1.0-rc.5 <0.3.0",
+    "@deepseek-ai/dsh-system-prompt": ">=0.1.0-rc.5 <0.3.0"
+  },
+  "dsh": { "bundle": { "patch": "./dsh-shell-bridge/cordis.patch.yml" } },
+  "scripts": {
+    "test": "npm --prefix dsh-shell-bridge test",
+    "pack:check": "npm pack --dry-run"
+  }
+}

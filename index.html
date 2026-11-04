@@ -18,10 +18,10 @@
     </header>
     <section class="workspace" aria-label="手势粒子控制台">
       <aside class="panel camera-panel">
-        <div class="panel-head"><div class="panel-title">摄像头 / 手部追踪</div><div class="live"><i></i><span id="trackingState">等待启动</span></div></div>
+        <div class="panel-head"><div class="panel-title">摄像头 / 手势识别</div><div class="live"><i></i><span id="trackingState">等待开启</span></div></div>
         <div class="video-wrap"><video id="video" autoplay playsinline muted></video><canvas id="handCanvas"></canvas><div class="camera-empty" id="cameraEmpty"><div><strong>准备捕捉你的手势</strong>点击下方按钮开启摄像头<br>建议保持手掌位于画面中央</div></div></div>
         <div class="controls"><button class="button" id="startButton">开启摄像头</button><div class="status" id="statusText">浏览器将请求摄像头权限</div></div>
-        <div class="metrics"><div class="metric"><div class="metric-label">握拳进度</div><div class="metric-value" id="progressValue">0<span class="metric-value"><small>%</small></span></div></div><div class="metric"><div class="metric-label">关键点</div><div class="metric-value" id="landmarkValue">—<small>/ 21</small></div></div></div>
+        <div class="metrics"><div class="metric"><div class="metric-label">握拳 / 捏合进度</div><div class="metric-value" id="progressValue">0<span class="metric-value"><small>%</small></span></div></div><div class="metric"><div class="metric-label">手部关键点</div><div class="metric-value" id="landmarkValue">—<small>/ 21</small></div></div></div>
       </aside>
       <section class="panel scene-panel" aria-label="3D粒子星云">
         <div class="scene-head"><div class="scene-copy"><div class="panel-title">3D 独立粒子</div><p>每颗粒子独立渲染 · 张开散开 · 握拳成形 · 捏合爆发</p></div><div class="scene-tools"><label class="model-picker"><span>模型</span><select id="modelSelect"><option value="nebula">星云</option><option value="logo">AI 标志</option><option value="heart">爱心</option><option value="flower">花朵</option><option value="saturn">土星</option><option value="fireworks">烟花</option><option value="earth">地球</option><option value="mountains">千里江山</option><option value="epiphyllum">昙花</option></select></label><label class="color-picker" title="调整粒子颜色"><input id="colorPicker" type="color" value="#69e8ff" aria-label="粒子颜色"></label><button class="icon-button" id="fullscreenButton" type="button" aria-label="全屏">⛶</button><span class="scene-badge" id="modeBadge">待机</span></div></div>
@@ -57,6 +57,12 @@
       const base = new Float32Array(COUNT * 3), modelTarget = new Float32Array(COUNT * 3), positions = new Float32Array(COUNT * 3), trailPositions = new Float32Array(COUNT * 3), colors = new Float32Array(COUNT * 3), sizes = new Float32Array(COUNT), burstDirections = new Float32Array(COUNT * 3), burstSeeds = new Float32Array(COUNT);
       const colorOpen = new THREE.Color('#45d9ff'), colorClosed = new THREE.Color('#ff61d4'), tempColor = new THREE.Color(), pink = new THREE.Color('#ff61d4');
       const P0 = Object.freeze({x:0,y:1.2,z:0});
+      const GESTURE_TUNING = Object.freeze({
+        positionRange:.24, positionDeadzone:.07, positionCurve:2.6, positionFollow:.16,
+        rotationDeadzone:.004, yawGain:3.6, pitchGain:1.7, rotationFollow:.16,
+        zoomBase:7.1, zoomRange:3.4, zoomFollow:.1,
+        noHandStiffness:6, noHandDamping:.9, spreadOpen:1.34, spreadClose:.88
+      });
       class Kalman1D{
         constructor(processNoise,measurementNoise){ this.q=processNoise; this.r=measurementNoise; this.x=0; this.p=1; this.ready=false; }
         reset(){ this.x=0; this.p=1; this.ready=false; }
@@ -153,7 +159,7 @@
         animationId=requestAnimationFrame(render);
         if(hasHand) motionPhase += .0045;
         if(burstActive){ burstFrame += .045; if(burstFrame>=1){ burstFrame=1; burstActive=false; } }
-        const p=handCloseProgress, spread=1.42-p*.9, wobble=motionPhase; tempColor.copy(colorOpen).lerp(colorClosed,p); trailPulse*=.9;
+        const p=handCloseProgress, spread=GESTURE_TUNING.spreadOpen-p*GESTURE_TUNING.spreadClose, wobble=motionPhase; tempColor.copy(colorOpen).lerp(colorClosed,p); trailPulse*=.9;
         const burstWave=Math.sin(burstFrame*Math.PI), burstScale=burstWave*2.45;
         for(let i=0;i<COUNT;i++){
           const idx=i*3;
@@ -168,13 +174,13 @@
           trailPositions[idx]+=(trailX-trailPositions[idx])*(burstWave?.12:(hasHand?.2:.3)); trailPositions[idx+1]+=(trailY-trailPositions[idx+1])*(burstWave?.12:(hasHand?.2:.3)); trailPositions[idx+2]+=(trailZ-trailPositions[idx+2])*(burstWave?.12:(hasHand?.2:.3));
           const shimmer=.82+Math.sin(i*.017+wobble)*.18; colors[idx]=tempColor.r*shimmer; colors[idx+1]=tempColor.g*shimmer; colors[idx+2]=tempColor.b*shimmer;
         }
-        const camera3d=scene.userData.camera; camera3d.position.z+=(targetZoom-camera3d.position.z)*.08;
+        const camera3d=scene.userData.camera; camera3d.position.z+=(targetZoom-camera3d.position.z)*GESTURE_TUNING.zoomFollow;
         particleGeometry.attributes.position.needsUpdate=true; trailGeometry.attributes.position.needsUpdate=true; particleGeometry.attributes.aColor.needsUpdate=true;
         [particleMaterial,trailMaterial,glowMaterial].forEach((material)=>{ material.uniforms.uClose.value=p; });
         const now=performance.now(), dt=Math.min(.033,Math.max(.001,(now-lastRenderAt)/1000)); lastRenderAt=now;
-        if(now-lastValidGestureAt<=600){ perturbX+=(perturbTargetX-perturbX)*.12; perturbY+=(perturbTargetY-perturbY)*.12; perturbVelocityX*=.82; perturbVelocityY*=.82; }
-        else { const ax=8*(0-perturbX)-.85*perturbVelocityX, ay=8*(0-perturbY)-.85*perturbVelocityY; perturbVelocityX+=ax*dt; perturbVelocityY+=ay*dt; perturbX+=perturbVelocityX*dt; perturbY+=perturbVelocityY*dt; if(Math.abs(perturbX)<.0005&&Math.abs(perturbVelocityX)<.0005){perturbX=0;perturbVelocityX=0;} if(Math.abs(perturbY)<.0005&&Math.abs(perturbVelocityY)<.0005){perturbY=0;perturbVelocityY=0;} }
-        if(particleGroup){ particleGroup.position.set(P0.x+perturbX,P0.y+perturbY,P0.z); particleGroup.rotation.y+=wrapAngle(targetYaw-particleGroup.rotation.y)*.2; particleGroup.rotation.x+=wrapAngle(targetPitch-particleGroup.rotation.x)*.2; particleGroup.rotation.z+=wrapAngle(targetRoll-particleGroup.rotation.z)*.2; }
+        if(now-lastValidGestureAt<=600){ perturbX+=(perturbTargetX-perturbX)*GESTURE_TUNING.positionFollow; perturbY+=(perturbTargetY-perturbY)*GESTURE_TUNING.positionFollow; perturbVelocityX*=.82; perturbVelocityY*=.82; }
+        else { const ax=GESTURE_TUNING.noHandStiffness*(0-perturbX)-GESTURE_TUNING.noHandDamping*perturbVelocityX, ay=GESTURE_TUNING.noHandStiffness*(0-perturbY)-GESTURE_TUNING.noHandDamping*perturbVelocityY; perturbVelocityX+=ax*dt; perturbVelocityY+=ay*dt; perturbX+=perturbVelocityX*dt; perturbY+=perturbVelocityY*dt; if(Math.abs(perturbX)<.0005&&Math.abs(perturbVelocityX)<.0005){perturbX=0;perturbVelocityX=0;} if(Math.abs(perturbY)<.0005&&Math.abs(perturbVelocityY)<.0005){perturbY=0;perturbVelocityY=0;} }
+        if(particleGroup){ particleGroup.position.set(P0.x+perturbX,P0.y+perturbY,P0.z); particleGroup.rotation.y+=wrapAngle(targetYaw-particleGroup.rotation.y)*GESTURE_TUNING.rotationFollow; particleGroup.rotation.x+=wrapAngle(targetPitch-particleGroup.rotation.x)*GESTURE_TUNING.rotationFollow; particleGroup.rotation.z+=wrapAngle(targetRoll-particleGroup.rotation.z)*GESTURE_TUNING.rotationFollow; }
         renderer.render(scene,camera3d);
       }
 
@@ -183,26 +189,26 @@
         const width=video.videoWidth||640,height=video.videoHeight||480; if(handCanvas.width!==width){handCanvas.width=width;handCanvas.height=height;}
         handCtx.clearRect(0,0,width,height);
         if(lm){
-          hasHand=true; lastSeen=performance.now(); targetProgress=calcCloseProgress(lm); landmarkValue.innerHTML='21<small>/ 21</small>'; trackingState.textContent='追踪中'; if(!burstActive) modeBadge.textContent=targetProgress>.62?'聚集中':'展开中';
+          hasHand=true; lastSeen=performance.now(); targetProgress=calcCloseProgress(lm); landmarkValue.innerHTML='21<small>/ 21</small>'; trackingState.textContent='识别中'; if(!burstActive) modeBadge.textContent=targetProgress>.62?'握拳收拢':'张开散开';
           const palmScale=Math.max(distance(lm[5],lm[17]),.001), palmCenter={x:(lm[0].x+lm[5].x+lm[9].x+lm[13].x+lm[17].x)/5,y:(lm[0].y+lm[5].y+lm[9].y+lm[13].y+lm[17].y)/5}, index=lm[8], pinch=1-smoothstep(.18,.62,distance(lm[4],lm[8])/palmScale);
           lastValidGestureAt=performance.now();
-          const deadzone=(value)=>Math.abs(value)<=.08?0:Math.sign(value)*(Math.abs(value)-.08)/.92;
+          const deadzone=(value)=>Math.abs(value)<=GESTURE_TUNING.positionDeadzone?0:Math.sign(value)*(Math.abs(value)-GESTURE_TUNING.positionDeadzone)/(1-GESTURE_TUNING.positionDeadzone);
           const offsetX=deadzone(.5-palmCenter.x), offsetY=deadzone(.5-palmCenter.y);
-          perturbTargetX=Math.max(-.6,Math.min(.6,Math.tanh(offsetX*3)*.15)); perturbTargetY=Math.max(-.6,Math.min(.6,Math.tanh(offsetY*3)*.15));
+          perturbTargetX=Math.max(-GESTURE_TUNING.positionRange,Math.min(GESTURE_TUNING.positionRange,Math.tanh(offsetX*GESTURE_TUNING.positionCurve)*GESTURE_TUNING.positionRange)); perturbTargetY=Math.max(-GESTURE_TUNING.positionRange,Math.min(GESTURE_TUNING.positionRange,Math.tanh(offsetY*GESTURE_TUNING.positionCurve)*GESTURE_TUNING.positionRange));
           const palmRoll=Math.atan2(lm[17].y-lm[5].y,lm[17].x-lm[5].x); targetRoll=Math.max(-1.2,Math.min(1.2,-palmRoll));
           if(pinch<.28) pinchArmed=true; else if(pinch>.72 && pinchArmed){ triggerBurst(); pinchArmed=false; }
-          if(lastIndexX!==null){ const dx=index.x-lastIndexX, dy=index.y-lastIndexY; targetYaw=wrapAngle(targetYaw+dx*4.8); targetPitch=Math.max(-1.15,Math.min(1.15,targetPitch+dy*2.2)); targetZoom=Math.max(4.5,Math.min(9.6,7.1+(distance(lm[4],lm[8])/palmScale-.6)*4.2)); }
+          if(lastIndexX!==null){ const rawDx=index.x-lastIndexX, rawDy=index.y-lastIndexY, dx=Math.abs(rawDx)<=GESTURE_TUNING.rotationDeadzone?0:rawDx, dy=Math.abs(rawDy)<=GESTURE_TUNING.rotationDeadzone?0:rawDy; targetYaw=wrapAngle(targetYaw+dx*GESTURE_TUNING.yawGain); targetPitch=Math.max(-1.15,Math.min(1.15,targetPitch+dy*GESTURE_TUNING.pitchGain)); targetZoom=Math.max(4.5,Math.min(9.6,GESTURE_TUNING.zoomBase+(distance(lm[4],lm[8])/palmScale-.6)*GESTURE_TUNING.zoomRange)); }
           if(lastPalmX!==null){ const mdx=palmCenter.x-lastPalmX, mdy=palmCenter.y-lastPalmY, travel=Math.hypot(mdx,mdy); if(travel>.001){ trailDirX=mdx/travel; trailDirY=mdy/travel; trailDistanceCarry+=travel; const emissions=Math.min(10,Math.floor(trailDistanceCarry/.012)); if(emissions>0){ trailDistanceCarry-=emissions*.012; trailPulse=Math.min(1,trailPulse+emissions*.1); } } }
           lastIndexX=index.x; lastIndexY=index.y; lastPalmX=palmCenter.x; lastPalmY=palmCenter.y;
           handCtx.save(); drawConnectors(handCtx,lm,HAND_CONNECTIONS,{color:'#8ceaff',lineWidth:2}); drawLandmarks(handCtx,lm,{color:'#ffffff',lineWidth:1,radius:3}); handCtx.restore();
         }
-        else if(performance.now()-lastSeen>180){ hasHand=false; lastIndexX=null; lastIndexY=null; lastPalmX=null; lastPalmY=null; pinchArmed=true; resetLandmarkFilters(); trackingState.textContent='未检测到手'; modeBadge.textContent='保持当前'; landmarkValue.innerHTML='—<small>/ 21</small>'; }
+        else if(performance.now()-lastSeen>180){ hasHand=false; lastIndexX=null; lastIndexY=null; lastPalmX=null; lastPalmY=null; pinchArmed=true; resetLandmarkFilters(); trackingState.textContent='未检测到手部'; modeBadge.textContent='无手，保持当前'; landmarkValue.innerHTML='—<small>/ 21</small>'; }
       }
       function tickProgress(){ handCloseProgress += (targetProgress-handCloseProgress)*.2; const pct=Math.round(handCloseProgress*100); progressValue.innerHTML=pct+'<span class="metric-value"><small>%</small></span>'; progressFill.style.width=pct+'%'; }
       async function startCamera(){
         if(stream)return; startButton.disabled=true; statusText.textContent='正在请求摄像头权限…';
         try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:1280},height:{ideal:720}},audio:false}); video.srcObject=stream; await video.play(); cameraEmpty.classList.add('hidden'); statusText.textContent='摄像头已连接，伸出一只手'; startButton.textContent='摄像头已开启'; hands=new Hands({locateFile:(file)=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`}); hands.setOptions({maxNumHands:1,modelComplexity:1,minDetectionConfidence:.68,minTrackingConfidence:.62}); hands.onResults(onResults); camera=new Camera(video,{onFrame:async()=>{if(hands)await hands.send({image:video})},width:1280,height:720}); camera.start(); }
-        catch(err){ console.error(err); stream?.getTracks().forEach((track)=>track.stop()); stream=null; video.srcObject=null; statusText.textContent='无法访问摄像头，请检查权限或使用 HTTPS / localhost'; startButton.disabled=false; }
+        catch(err){ console.error(err); stream?.getTracks().forEach((track)=>track.stop()); stream=null; video.srcObject=null; statusText.textContent='摄像头无法启动，请允许权限并使用 HTTPS 或 localhost'; startButton.disabled=false; }
       }
       modelSelect.addEventListener('change',()=>setModel(modelSelect.value));
       colorPicker.addEventListener('input',(e)=>setParticleColor(e.target.value));
@@ -210,7 +216,7 @@
       startButton.addEventListener('click',startCamera);
       window.addEventListener('beforeunload',()=>stream?.getTracks().forEach((track)=>track.stop()));
       initThree(); render(); setInterval(tickProgress,16);
-      if(!navigator.mediaDevices?.getUserMedia){ statusText.textContent='当前环境不支持摄像头 API'; startButton.disabled=true; }
+      if(!navigator.mediaDevices?.getUserMedia){ statusText.textContent='此浏览器不支持摄像头 API'; startButton.disabled=true; }
        else setTimeout(startCamera,400);
     })();
   </script>

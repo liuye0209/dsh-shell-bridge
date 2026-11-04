@@ -2,4 +2,4 @@
     - id: dsh-shell-bridge
       name: dsh-shell-bridge
       config:
-        prompt: true
+        promptMode: full

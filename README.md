@@ -1,51 +1,49 @@
 # DSH Shell Bridge
 
-DSH Shell Bridge 是一个面向 Windows 原生 DeepSeek Harness（DSH）和 PowerShell 执行器的兼容护栏插件。
+DSH Shell Bridge is a Cordis plugin that adds a conservative PowerShell compatibility guard to DSH's official `tools/pre-execute` hook. It does not modify DSH, start another shell, or rewrite commands.
 
-它通过 DSH 的 `tools/pre-execute` 扩展点检查模型生成的 PowerShell 命令，识别常见的 Bash/PowerShell 语法冲突，并在执行前给出修正提示。插件复用 DSH 官方 Shell Runtime，不启动额外的 Shell 后端，也不修改 DSH 官方源码。
+The installable package is available at the repository root and delegates to the implementation in [`dsh-shell-bridge/`](./dsh-shell-bridge/). The root [`index.html`](./index.html) is an unrelated project file and remains untouched by the plugin.
 
-## 支持的检查
+## Install
 
-- `$HOME`：提示使用 `$env:USERPROFILE`
-- `/c/...` 等 POSIX 路径：提示使用 `C:\Users\...` 原生 Windows 路径
-- `source script.sh`：提示使用 `. .\script.ps1`
-- `&&`：提示确认 PowerShell 7，或改用 `;`
-- 合法 PowerShell 命令，例如 `Get-ChildItem -Path C:\Temp`，会正常放行
-
-护栏默认只在 Windows 启用，提示词可以通过配置关闭。
-
-## 目录
-
-插件实现位于 [`dsh-shell-bridge/`](./dsh-shell-bridge/)：
-
-- `index.js`：Cordis `apply(ctx)` 插件入口和检测逻辑
-- `package.json`：包元数据和 DSH bundle 声明
-- `cordis.patch.yml`：自动插入 DSH profile 的配置
-- `test/index.test.js`：最小可复现测试
-
-## 安装
-
-在 DSH profile 中安装本地插件：
-
-```powershell
-dsh plugin --profile web add .\dsh-shell-bridge
-```
-
-也可以安装 GitHub 仓库：
+From GitHub:
 
 ```powershell
 dsh plugin --profile web add github:liuye0209/dsh-shell-bridge
 ```
 
-安装后重启原来的 DSH Web 进程。
-
-## 测试
+From a local checkout:
 
 ```powershell
-cd .\dsh-shell-bridge
+dsh plugin --profile web add .
+```
+
+The nested bundle can also be installed directly:
+
+```powershell
+dsh plugin --profile web add .\dsh-shell-bridge
+```
+
+Restart the existing DSH App Server after installation.
+
+## Behavior
+
+- `$HOME` and `$env:USERPROFILE` are valid PowerShell variables.
+- Explicit `/c/...` paths and Bash `source script.sh` are denied.
+- Ambiguous path text is asked about; strings, comments, URLs, and here-strings are filtered by the lexer.
+- `&&` and `||` are allowed for PowerShell 7 and asked about for PowerShell 5.1 or unknown versions.
+- `promptMode` supports `minimal`, `full`, and `off`; `off` disables prompt injection while keeping pre-execute checks.
+
+See [`dsh-shell-bridge/README.md`](./dsh-shell-bridge/README.md) for configuration, compatibility ranges, rule fields, and development commands.
+
+## Test
+
+```powershell
 npm test
 ```
 
-## 许可证
+This forwards to the plugin's Node.js test suite. Node.js `22.19.0` or newer is required.
 
-本项目使用 [MIT License](./LICENSE)。
+## License
+
+MIT.

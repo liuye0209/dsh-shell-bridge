@@ -1,61 +1,75 @@
-# DSH Shell Bridge Pro
+# DSH Shell Bridge 1.1.0
 
-这是一个面向 Windows 原生 DSH + PowerShell 执行器的 Cordis hook plugin。它复用 DSH 已有的 `pwsh` 工具，只在 `tools/pre-execute` 检查模型发出的命令；插件不会启动第二个 Shell、不会调用 `child_process`，也不会改写已记录的参数。
+DSH Shell Bridge is a conservative Cordis plugin for Windows DSH installations that use DSH's official PowerShell tool. It checks commands at `tools/pre-execute` and returns the existing `allow`/`ask`/`deny` hook decisions.
 
-护栏默认只在 Windows (`process.platform === 'win32'`) 启用。它识别以下明确冲突：
+It never starts a shell, adds a shell backend, rewrites a command, or changes DSH's official runtime.
 
-- `$HOME`：追问并提示 `$env:USERPROFILE`；PowerShell 版本不同会影响 `$HOME` 可用性，因此保守地走 `ask`。
-- `/c/...`：拒绝并提示 `C:\Users\...` 等原生路径。
-- `source script.sh`：拒绝并提示 `. .\script.ps1`，同时要求确认脚本确实是 PowerShell 脚本。
-- `&&`：追问 PowerShell 5.1 兼容性，建议 `;` 或确认使用 PowerShell 7+。
+## Checks
 
-合法命令例如 `Get-ChildItem -Path C:\Temp` 会直接放行。未知工具、没有可识别命令字段的调用也会直接交给后续 Hook。
+- `$HOME` and `$env:USERPROFILE` are valid PowerShell variables and pass through.
+- Explicit `/c/...` paths are denied with a native Windows path suggestion.
+- A quoted POSIX-looking path is denied for known path commands and asked about when its meaning is uncertain.
+- `source script.sh` at a real command position is denied; strings, comments, URLs, and here-strings are ignored.
+- `&&` and `||` are allowed for PowerShell 7, asked about for PowerShell 5.1 or an unknown version.
 
-## 安装
+Each finding has `id`, `severity`, `confidence`, `decision`, `message`, and `suggestion` fields. The scanner is intentionally small and conservative; it does not pretend to be a full PowerShell parser.
 
-在 DSH 项目中执行：
+## Installation
+
+The repository root is an installable forwarding bundle, so this command works from GitHub:
 
 ```powershell
+dsh plugin --profile web add github:liuye0209/dsh-shell-bridge
+```
+
+For a local checkout, either command targets the same implementation:
+
+```powershell
+dsh plugin --profile web add .
 dsh plugin --profile web add .\dsh-shell-bridge
 ```
 
-也可以安装发布包：
+Restart the existing DSH App Server after installation. The root `index.html` is unrelated and is retained.
 
-```powershell
-dsh plugin --profile web add dsh-shell-bridge
-```
+## Configuration
 
-安装后重启原来的 DSH Web 进程。Bundle 通过 `package.json` 的 `dsh.bundle.patch` 自动插入 `cordis.patch.yml`；不需要修改 DSH 官方包源码。
-
-## 配置
-
-Bundle 默认配置为：
+The bundle patch enables the plugin and its full prompt by default. Configuration can be supplied in the DSH profile:
 
 ```yaml
 - id: dsh-shell-bridge
+  name: dsh-shell-bridge
   config:
-    prompt: true
+    enabled: true
+    promptMode: minimal # minimal | full | off
+    powershellVersion: 7 # 5.1 | 7 | unknown
 ```
 
-省略 `enabled` 会按宿主平台判断：Windows 默认启用，其他平台默认关闭。
+`promptMode: off` removes only the system prompt section; pre-execute checks remain active. The older `prompt: true|false` option remains supported (`true` maps to `full`, `false` to `off`). `shellProfile.version` and `shellProfile.capabilities` remain accepted for hosts that already provide profile metadata. Invalid values use the conservative unknown profile and full prompt defaults.
 
-在 profile 的 `cordis.patch.yml` 中替换这一行的完整 `config` 即可关闭提示词或整个护栏：
+Other options are `enabled`, `toolNames`, `platform`, and `shellProfile`. The plugin is enabled by default only on `win32`; non-Windows hosts delegate unchanged unless explicitly enabled.
 
-```yaml
-- id: dsh-shell-bridge
-  config:
-    enabled: false
-    prompt: false
-```
+## Compatibility
 
-`toolNames` 可用于适配自定义 PowerShell 工具名，例如 `['pwsh', 'my-pwsh']`。非 Windows 环境默认关闭；如确实在兼容的模拟宿主中需要启用，可显式设置 `enabled: true`。
+| Input | PowerShell 7 | PowerShell 5.1 | Unknown |
+| --- | --- | --- | --- |
+| `$HOME`, `$env:USERPROFILE` | allow | allow | allow |
+| `&&`, `||` | allow | ask | ask |
+| `source script.sh` | deny | deny | deny |
+| explicit `/c/Users/...` | deny | deny | deny |
 
-## 测试
+The target range is DSH Cordis `>=4.0.0 <5.0.0`, DSH tools `>=0.1.0-rc.5 <0.3.0`, and DSH system prompt `>=0.1.0-rc.5 <0.3.0`. Node.js `22.19.0` or newer is required.
 
-无需安装依赖，在插件目录运行：
+## Development
 
 ```powershell
+cd .\dsh-shell-bridge
 npm test
+node --check index.js
+npm pack --dry-run
 ```
 
-测试覆盖 `$HOME`、`/c/`、`source`、`&&`、合法 PowerShell 命令，以及真实 Cordis Hook 形态的 `allow`/非 `allow` 决策。
+The GitHub Actions matrix runs these checks on Windows and Linux. No `child_process` or alternate shell runtime is used.
+
+## License
+
+MIT.
