@@ -1,6 +1,6 @@
 {
   "name": "dsh-shell-bridge",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Conservative Bash-to-Windows PowerShell compatibility guard for DeepSeek Harness",
   "license": "MIT",
   "type": "module",
@@ -9,7 +9,7 @@
     ".": "./index.js",
     "./package.json": "./package.json"
   },
-  "files": ["index.js", "cordis.patch.yml", "README.md", "CHANGELOG.md", "test"],
+  "files": ["index.js", "src", "benchmark", "scripts", "cordis.patch.yml", "README.md", "CHANGELOG.md", "test"],
   "engines": {"node": ">=22.19.0"},
   "peerDependencies": {
     "@deepseek-ai/cordis": ">=4.0.0 <5.0.0",
@@ -17,5 +17,9 @@
     "@deepseek-ai/dsh-system-prompt": ">=0.1.0-rc.5 <0.3.0"
   },
   "dsh": {"bundle": {"patch": "./cordis.patch.yml"}},
-  "scripts": {"test": "node --test test/index.test.js"}
+  "scripts": {
+    "test": "node --test test/index.test.js",
+    "benchmark": "node benchmark/runner.mjs",
+    "check:dsh": "node scripts/check-dsh.mjs"
+  }
 }

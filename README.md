@@ -2,6 +2,8 @@
 
 DSH Shell Bridge is a Cordis plugin that adds a conservative PowerShell compatibility guard to DSH's official `tools/pre-execute` hook. It does not modify DSH, start another shell, or rewrite commands.
 
+Version 1.2 adds profile metadata normalization, an extensible rule registry, conservative incomplete-syntax detection, and repeatable benchmark/environment checks.
+
 The installable package is available at the repository root and delegates to the implementation in [`dsh-shell-bridge/`](./dsh-shell-bridge/). The root [`index.html`](./index.html) is an unrelated project file and remains untouched by the plugin.
 
 ## Install
@@ -41,6 +43,16 @@ See [`dsh-shell-bridge/README.md`](./dsh-shell-bridge/README.md) for configurati
 ```powershell
 npm test
 ```
+
+Run the V1.2 checks directly:
+
+```powershell
+npm run benchmark  # reports BLOCKED when the official tokenizer is unavailable
+npm run check:dsh  # reports BLOCKED when the dsh CLI is unavailable
+npm run pack:check
+```
+
+The Rule API is documented in [`dsh-shell-bridge/README.md`](./dsh-shell-bridge/README.md). The current machine does not have the `dsh` CLI or an official tokenizer, so those two checks must remain `BLOCKED` until the corresponding tools are installed.
 
 This forwards to the plugin's Node.js test suite. Node.js `22.19.0` or newer is required.
 

@@ -3,6 +3,10 @@
  * DSH owns shell execution; this plugin only participates in tools/pre-execute.
  */
 
+import { normalizeProfileMetadata, readProfileMetadata } from './src/profile-metadata.js'
+import { createRuleRegistry } from './src/rule-registry.js'
+import { scanPowerShell } from './src/powershell-parser.js'
+
 export const name = 'dsh-shell-bridge'
 export const inject = ['tools', 'systemPrompt']
 
@@ -62,54 +66,22 @@ function isRecord(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
 }
 
-function versionParts(value) {
-  if (typeof value === 'number' && Number.isFinite(value)) value = String(value)
-  if (typeof value !== 'string') return undefined
-  const text = value.trim()
-  if (text.toLowerCase() === 'unknown') return { label: null, family: 'unknown' }
-  if (/^5\.1(?:\.\d+)?$/.test(text)) return { label: '5.1', family: '5.1' }
-  if (/^7(?:\.\d+)?(?:\.\d+)?$/.test(text)) return { label: text === '7' ? '7' : text, family: '7' }
-  return undefined
-}
-
-function profileSource(config) {
-  if (!isRecord(config)) return {}
-  if (isRecord(config.shellProfile)) return config.shellProfile
-  if (isRecord(config.profile)) return config.profile
-  return {}
-}
-
 export function resolveShellProfile(config = {}) {
   const safeConfig = isRecord(config) ? config : {}
-  const supplied = profileSource(safeConfig)
-  const versionValue = supplied.version ?? safeConfig.powershellVersion ?? safeConfig.shellVersion
-  const parts = versionParts(versionValue)
-  const platform = supplied.platform ?? safeConfig.platform ?? process.platform
-  const shell = typeof supplied.shell === 'string' ? supplied.shell : 'powershell'
-  const suppliedCapabilities = isRecord(supplied.capabilities) ? supplied.capabilities : {}
-
-  if (shell.toLowerCase() !== 'powershell' || !parts || parts.family === 'unknown') {
-    return {
-      shell: 'powershell',
-      version: null,
-      platform: platform ?? UNKNOWN_PROFILE.platform,
-      capabilities: { chainOperator: false, posixSource: false },
-      confidence: 'unknown',
-    }
-  }
-
-  return {
-    shell: 'powershell',
-    version: parts.label,
-    platform,
-    capabilities: {
-      chainOperator: suppliedCapabilities.chainOperator === undefined
-        ? parts.family === '7'
-        : Boolean(suppliedCapabilities.chainOperator),
-      posixSource: Boolean(suppliedCapabilities.posixSource),
-    },
-    confidence: 'detected',
-  }
+  const supplied = isRecord(safeConfig.profileMetadata)
+    ? safeConfig.profileMetadata
+    : isRecord(safeConfig.shellProfile)
+      ? safeConfig.shellProfile
+      : isRecord(safeConfig.profile)
+        ? safeConfig.profile
+        : {}
+  const profile = normalizeProfileMetadata({
+    ...supplied,
+    version: supplied.version ?? safeConfig.powershellVersion ?? safeConfig.shellVersion,
+    platform: supplied.platform ?? safeConfig.platform,
+  }, { platform: safeConfig.platform ?? process.platform })
+  const { source, ...compatibilityProfile } = profile
+  return compatibilityProfile
 }
 
 function blankLike(char) {
@@ -290,21 +262,50 @@ function chainFinding(operator, profile) {
   )
 }
 
-export function analyzeCommand(command, profile = resolveShellProfile()) {
+export function analyzeCommand(command, profile = resolveShellProfile(), registry) {
   if (typeof command !== 'string' || command.trim() === '') return []
   const resolvedProfile = profile?.capabilities ? profile : resolveShellProfile(profile)
   const scanned = scanCommand(command)
-  const findings = pathFindings(scanned)
-  if (hasBashSource(scanned.tokens)) {
-    findings.push(ruleFinding('source-command', 'high', 'high', 'deny', '检测到 Bash 的 source 命令。', 'PowerShell 脚本应使用 . .\\script.ps1，并确认脚本本身是 PowerShell 格式。'))
-  }
-  if (!resolvedProfile.capabilities.chainOperator && scanned.tokens.some((token) => token.value === '&&')) {
-    findings.push(chainFinding('&&', resolvedProfile))
-  }
-  if (!resolvedProfile.capabilities.chainOperator && scanned.tokens.some((token) => token.value === '||')) {
-    findings.push(chainFinding('||', resolvedProfile))
-  }
-  return findings
+  const syntax = scanPowerShell(command).syntax
+  const activeRegistry = registry ?? createBuiltinRuleRegistry(resolvedProfile)
+  return activeRegistry.evaluateRulesSync({ command, profile: resolvedProfile, scanned, syntax })
+}
+
+export function createBuiltinRuleRegistry(profile = resolveShellProfile(), extraRules = []) {
+  const registry = createRuleRegistry([
+    {
+      id: 'builtin-posix-path',
+      priority: 100,
+      match: ({ scanned }) => pathFindings(scanned),
+    },
+    {
+      id: 'builtin-source-command',
+      priority: 90,
+      match: ({ scanned }) => hasBashSource(scanned.tokens)
+        ? ruleFinding('source-command', 'high', 'high', 'deny', '检测到 Bash 的 source 命令。', 'PowerShell 脚本应使用 . .\\script.ps1，并确认脚本本身是 PowerShell 格式。')
+        : [],
+    },
+    {
+      id: 'builtin-chain-operators',
+      priority: 80,
+      match: ({ scanned }) => {
+        if (profile.capabilities.chainOperator) return []
+        const findings = []
+        if (scanned.tokens.some((token) => token.value === '&&')) findings.push(chainFinding('&&', profile))
+        if (scanned.tokens.some((token) => token.value === '||')) findings.push(chainFinding('||', profile))
+        return findings
+      },
+    },
+    {
+      id: 'builtin-syntax-incomplete',
+      priority: 70,
+      match: ({ syntax }) => syntax?.complete === false
+        ? ruleFinding('syntax-incomplete', 'medium', 'low', 'ask', 'PowerShell 输入可能不完整或解析失败。', '请补全引号、括号、脚本块或 Here-String 后重试。')
+        : [],
+    },
+    ...extraRules,
+  ])
+  return registry
 }
 
 export function analyzeResult(command, profile = resolveShellProfile()) {
@@ -357,15 +358,18 @@ function resolveConfig(config = {}) {
     promptMode: promptMode(safeConfig),
     toolNames: configuredNames.length > 0 ? configuredNames : DEFAULT_TOOL_NAMES,
     shellProfile: resolveShellProfile(safeConfig),
+    rules: Array.isArray(safeConfig.rules) ? safeConfig.rules : [],
   }
 }
 
 export function apply(ctx, config = {}) {
-  const resolved = resolveConfig(config)
+  const metadata = readProfileMetadata(ctx, config)
+  const resolved = resolveConfig({ ...config, shellProfile: metadata.profile })
   if (!resolved.enabled) return
+  const registry = createBuiltinRuleRegistry(resolved.shellProfile, resolved.rules)
   ctx.on('tools/pre-execute', async (exec, next) => {
     if (!isPowerShellTool(exec?.name, resolved.toolNames)) return next()
-    const decision = decisionFor(analyzeCommand(commandText(exec?.arguments), resolved.shellProfile))
+    const decision = decisionFor(analyzeCommand(commandText(exec?.arguments), resolved.shellProfile, registry))
     if (decision.kind === 'allow') return next()
     return decision
   })
@@ -378,4 +382,4 @@ export function apply(ctx, config = {}) {
   }
 }
 
-export { DEFAULT_TOOL_NAMES, FULL_GUIDANCE, GUIDANCE, MINIMAL_GUIDANCE, RULES, UNKNOWN_PROFILE }
+export { createRuleRegistry, DEFAULT_TOOL_NAMES, FULL_GUIDANCE, GUIDANCE, MINIMAL_GUIDANCE, RULES, UNKNOWN_PROFILE }

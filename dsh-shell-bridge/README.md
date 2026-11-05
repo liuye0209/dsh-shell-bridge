@@ -1,4 +1,4 @@
-# DSH Shell Bridge 1.1.0
+# DSH Shell Bridge 1.2.0
 
 DSH Shell Bridge is a conservative Cordis plugin for Windows DSH installations that use DSH's official PowerShell tool. It checks commands at `tools/pre-execute` and returns the existing `allow`/`ask`/`deny` hook decisions.
 
@@ -13,6 +13,30 @@ It never starts a shell, adds a shell backend, rewrites a command, or changes DS
 - `&&` and `||` are allowed for PowerShell 7, asked about for PowerShell 5.1 or an unknown version.
 
 Each finding has `id`, `severity`, `confidence`, `decision`, `message`, and `suggestion` fields. The scanner is intentionally small and conservative; it does not pretend to be a full PowerShell parser.
+
+## Rule API
+
+Third-party rules can be registered without changing the built-in checks:
+
+```js
+import { createBuiltinRuleRegistry } from 'dsh-shell-bridge'
+
+const registry = createBuiltinRuleRegistry(profile, [{
+  id: 'my-rule',
+  priority: 50,
+  match: ({ command }) => command.includes('Invoke-Expression')
+    ? { id: 'my-rule', severity: 'high', confidence: 'high', decision: 'ask', message: '确认动态执行。', suggestion: '请人工确认。' }
+    : [],
+}])
+```
+
+Rule IDs must be unique. Higher `priority` runs first; equal priorities keep registration order. A throwing rule becomes a low-confidence `ask` finding and does not stop other rules. Use `unregisterRule(id)` and `listRules()` on the returned registry. `analyzeCommand(command, profile, registry)` accepts a custom registry while preserving the two-argument form.
+
+## Parser and benchmark limits
+
+The plugin accepts an injected pure parser adapter through `createParserAdapter({ parse })`. It never starts PowerShell to parse user input. Without an adapter it tracks quotes, here-strings, comments, delimiters, multiline boundaries, and incomplete expressions with a JavaScript fallback. Ambiguous or incomplete input receives `ask`.
+
+`npm run benchmark` uses the fixed cases in `benchmark/cases.json`. It reports `PASS` only when a tokenizer adapter supplies source, version, metric, and a `count()` function; otherwise it reports `BLOCKED` without token estimates. `npm run check:dsh` only checks `dsh --version` and reports `BLOCKED` when the CLI is missing.
 
 ## Installation
 

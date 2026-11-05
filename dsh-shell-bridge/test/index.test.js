@@ -4,12 +4,113 @@ import {
   analyzeCommand,
   analyzeResult,
   apply,
+  createBuiltinRuleRegistry,
   FULL_GUIDANCE,
   MINIMAL_GUIDANCE,
   resolveShellProfile,
 } from '../index.js'
+import { normalizeProfileMetadata, readProfileMetadata } from '../src/profile-metadata.js'
+import { createRuleRegistry } from '../src/rule-registry.js'
+import { createParserAdapter, scanPowerShell } from '../src/powershell-parser.js'
+import { runBenchmark } from '../benchmark/runner.mjs'
+import { checkDshEnvironment } from '../scripts/check-dsh.mjs'
 
 const ids = (command, profile) => analyzeCommand(command, profile).map((finding) => finding.id)
+const finding = (id) => ({ id, ruleId: id, severity: 'low', confidence: 'high', decision: 'ask', message: id, suggestion: 'check' })
+
+test('registers, orders, lists, and unregisters rules', async () => {
+  const registry = createRuleRegistry()
+  registry.registerRule({ id: 'low', priority: 1, match: () => finding('low') })
+  registry.registerRule({ id: 'high', priority: 10, match: () => finding('high') })
+  assert.deepEqual(registry.listRules().map((rule) => rule.id), ['high', 'low'])
+  assert.deepEqual(await registry.evaluateRules({ command: 'x' }), [finding('high'), finding('low')])
+  assert.equal(registry.unregisterRule('low'), true)
+  assert.equal(registry.unregisterRule('low'), false)
+})
+
+test('isolates duplicate and throwing rules', async () => {
+  const registry = createRuleRegistry([{ id: 'same', priority: 1, match: () => [] }])
+  assert.throws(() => registry.registerRule({ id: 'same', priority: 2, match: () => [] }), /duplicate/i)
+  registry.registerRule({ id: 'throws', priority: 3, match: () => { throw new Error('boom') } })
+  const findings = await registry.evaluateRules({ command: 'x' })
+  assert.equal(findings[0].decision, 'ask')
+  assert.equal(findings[0].id, 'rule-error:throws')
+})
+
+test('runs third-party rules through the built-in registry without core edits', () => {
+  const registry = createBuiltinRuleRegistry(resolveShellProfile({ powershellVersion: '7' }), [{
+    id: 'custom-command',
+    priority: 200,
+    match: ({ command }) => command.includes('Invoke-Expression')
+      ? finding('custom-command')
+      : [],
+  }])
+  const result = analyzeResult('Invoke-Expression $code', resolveShellProfile({ powershellVersion: '7' }))
+  const findings = analyzeCommand('Invoke-Expression $code', resolveShellProfile({ powershellVersion: '7' }), registry)
+  assert.deepEqual(findings.map((item) => item.id), ['custom-command'])
+  assert.equal(result.decision, 'allow')
+})
+
+test('does not inspect nested PowerShell syntax inside strings and containers', () => {
+  assert.deepEqual(ids('$x = $(Get-Item C:\\x); @($x); @{Path="/c/Users/demo"}'), ['posix-path-uncertain'])
+  assert.deepEqual(ids('Write-Output @"\nsource script.sh && /c/Users/demo\n"@'), [])
+  assert.deepEqual(ids('Get-Item (Join-Path $HOME ("a`"b"))'), [])
+})
+
+test('marks incomplete expressions conservatively', () => {
+  const result = analyzeResult('Get-Item (', resolveShellProfile({ powershellVersion: '7' }))
+  assert.ok(['ask', 'deny'].includes(result.decision))
+})
+
+test('covers arrays, hash tables, script blocks, pipelines, escapes, and malformed input', () => {
+  assert.deepEqual(ids('$items = @($HOME, $env:USERPROFILE)'), [])
+  assert.deepEqual(ids('$map = @{ Path = "C:\\Work" }'), [])
+  assert.deepEqual(ids('$block = { Get-Item C:\\Work }; & { Get-Location }'), [])
+  assert.deepEqual(ids('Get-Item C:\\Work | ForEach-Object { $_.Name }'), [])
+  assert.deepEqual(ids('Write-Output "a`"b"; Write-Output $HOME'), [])
+  assert.equal(analyzeResult('Get-Item @{', resolveShellProfile({ powershellVersion: '7' })).decision, 'ask')
+  assert.equal(analyzeResult('@"\nunfinished', resolveShellProfile({ powershellVersion: '7' })).decision, 'ask')
+})
+
+test('uses an injected parser only when it is a pure adapter', () => {
+  const adapter = createParserAdapter({ parse: (text) => ({ tokens: [{ value: text }], errors: [] }) })
+  assert.equal(adapter.available, true)
+  assert.equal(scanPowerShell('Get-Date', adapter).parser, 'injected')
+})
+
+test('benchmark reports BLOCKED without an official tokenizer', async () => {
+  const report = await runBenchmark({ cases: [{ id: 'plain', prompt: 'Get-Date' }] })
+  assert.equal(report.status, 'BLOCKED')
+  assert.equal(report.summary, null)
+})
+
+test('benchmark uses one tokenizer for original and optimized prompts', async () => {
+  const tokenizer = { source: 'test', version: '1', metric: 'tokens', count: (text) => text.length }
+  const report = await runBenchmark({
+    cases: [{ id: 'plain', prompt: 'abcdef', optimizedPrompt: 'abc' }],
+    tokenizer,
+  })
+  assert.equal(report.status, 'PASS')
+  assert.equal(report.cases[0].reductionRate, 50)
+})
+
+test('DSH check distinguishes missing CLI from a failed command', async () => {
+  const report = await checkDshEnvironment({ resolveCommand: () => undefined })
+  assert.equal(report.status, 'BLOCKED')
+  assert.equal(report.reason, 'dsh-cli-missing')
+})
+
+test('normalizes complete, partial, and missing profile metadata', () => {
+  assert.equal(normalizeProfileMetadata({ shell: 'powershell', version: '7.4', platform: 'win32' }).capabilities.chainOperator, true)
+  assert.equal(normalizeProfileMetadata({ version: '5.1' }).capabilities.chainOperator, false)
+  assert.equal(normalizeProfileMetadata({ version: 'wat' }).confidence, 'unknown')
+})
+
+test('reports metadata source without invoking a shell', () => {
+  const result = readProfileMetadata({ shell: { profile: { version: '7' } } }, {})
+  assert.equal(result.profile.version, '7')
+  assert.equal(result.status, 'detected')
+})
 
 test('allows PowerShell automatic variables including $HOME and $env:', () => {
   assert.deepEqual(ids('Get-ChildItem "$HOME\\Desktop"'), [])

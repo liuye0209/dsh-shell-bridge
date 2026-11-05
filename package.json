@@ -1,6 +1,6 @@
 {
   "name": "dsh-shell-bridge",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "DSH Shell Bridge bundle (the implementation lives in dsh-shell-bridge/)",
   "license": "MIT",
   "type": "module",
@@ -11,6 +11,9 @@
   },
   "files": [
     "dsh-shell-bridge/index.js",
+    "dsh-shell-bridge/src",
+    "dsh-shell-bridge/benchmark",
+    "dsh-shell-bridge/scripts",
     "dsh-shell-bridge/cordis.patch.yml",
     "dsh-shell-bridge/README.md",
     "dsh-shell-bridge/CHANGELOG.md",
@@ -25,6 +28,8 @@
   "dsh": { "bundle": { "patch": "./dsh-shell-bridge/cordis.patch.yml" } },
   "scripts": {
     "test": "npm --prefix dsh-shell-bridge test",
+    "benchmark": "npm --prefix dsh-shell-bridge run benchmark",
+    "check:dsh": "npm --prefix dsh-shell-bridge run check:dsh",
     "pack:check": "npm pack --dry-run"
   }
 }

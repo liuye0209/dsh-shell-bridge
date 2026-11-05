@@ -1,0 +1,7 @@
+[
+  { "id": "plain", "category": "plain", "prompt": "Get-Date" },
+  { "id": "pipeline", "category": "pipeline", "prompt": "Get-ChildItem | Where-Object Name -like '*.ps1' | Select-Object Name" },
+  { "id": "multiline", "category": "multiline", "prompt": "Get-ChildItem\nWrite-Output $HOME" },
+  { "id": "nested", "category": "nested", "prompt": "$items = @(Get-ChildItem); @{ Count = $items.Count }" },
+  { "id": "multi-step", "category": "multi-step", "prompt": "Set-Location C:\\Work; Get-ChildItem | Measure-Object" }
+]
