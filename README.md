@@ -1,61 +1,111 @@
 # DSH Shell Bridge
 
-DSH Shell Bridge is a Cordis plugin that adds a conservative PowerShell compatibility guard to DSH's official `tools/pre-execute` hook. It does not modify DSH, start another shell, or rewrite commands.
+DSH Shell Bridge 是一个面向 Windows DSH + PowerShell 的 Cordis 插件。它在 DSH 官方 `tools/pre-execute` 执行前检查命令，识别常见的 Bash/Unix 写法，给出放行、询问或拒绝结果，帮助模型使用正确的 PowerShell 语法。
 
-Version 1.2 adds profile metadata normalization, an extensible rule registry, conservative incomplete-syntax detection, and repeatable benchmark/environment checks.
+插件只注册 DSH 的扩展点，不修改 DSH 官方 runtime，不新增 Shell 后端，不执行用户脚本，也不会自动改写命令。
 
-The installable package is available at the repository root and delegates to the implementation in [`dsh-shell-bridge/`](./dsh-shell-bridge/). The root [`index.html`](./index.html) is an unrelated project file and remains untouched by the plugin.
+## 解决的问题
 
-## Install
+在 Windows DSH 中，模型可能把 Bash 命令、POSIX 路径或不兼容的 PowerShell 语法交给 PowerShell 执行器。Bridge 会在命令执行前拦截明确冲突，询问无法确定的输入，并保留合法 PowerShell 命令的正常执行流程。
 
-From GitHub:
+## 主要功能
+
+- 识别 `/c/...` 等明确的 POSIX 路径，并建议改用 `C:\...` 或其他 Windows 路径。
+- 拒绝命令位置上的 Bash `source script.sh`。
+- 过滤字符串、注释、URL 和 Here-String，减少误报。
+- 识别 `$HOME`、`$env:USERPROFILE`、数组、哈希表、脚本块、Pipeline、嵌套表达式和不完整输入。
+- 根据 PowerShell 5.1、7.x 或未知版本处理 `&&` 和 `||`。
+- 通过 Profile Metadata 适配层读取宿主信息；metadata 缺失时使用保守回退。
+- 提供可扩展 Rule Registry，支持规则注册、注销、查询、优先级和异常隔离。
+- 提供 tokenizer benchmark 和 DSH CLI 环境检查；缺少官方接口时明确输出 `BLOCKED`，不生成估算数据。
+- 支持 `promptMode: minimal | full | off`，关闭提示词不会关闭执行前检查。
+
+## 安装
+
+从 GitHub 安装根目录 bundle：
 
 ```powershell
 dsh plugin --profile web add github:liuye0209/dsh-shell-bridge
 ```
 
-From a local checkout:
+从本地 checkout 安装：
 
 ```powershell
 dsh plugin --profile web add .
 ```
 
-The nested bundle can also be installed directly:
+也可以直接安装实现目录：
 
 ```powershell
 dsh plugin --profile web add .\dsh-shell-bridge
 ```
 
-Restart the existing DSH App Server after installation.
+安装后重启对应的 DSH App Server。项目根目录的 [`index.html`](./index.html) 是其他项目文件，与插件无关。
 
-## Behavior
+## 配置
 
-- `$HOME` and `$env:USERPROFILE` are valid PowerShell variables.
-- Explicit `/c/...` paths and Bash `source script.sh` are denied.
-- Ambiguous path text is asked about; strings, comments, URLs, and here-strings are filtered by the lexer.
-- `&&` and `||` are allowed for PowerShell 7 and asked about for PowerShell 5.1 or unknown versions.
-- `promptMode` supports `minimal`, `full`, and `off`; `off` disables prompt injection while keeping pre-execute checks.
+在 DSH profile 中配置插件：
 
-See [`dsh-shell-bridge/README.md`](./dsh-shell-bridge/README.md) for configuration, compatibility ranges, rule fields, and development commands.
+```yaml
+- id: dsh-shell-bridge
+  name: dsh-shell-bridge
+  config:
+    enabled: true
+    promptMode: full       # minimal | full | off
+    powershellVersion: 7   # 5.1 | 7 | unknown
+```
 
-## Test
+可选配置包括 `toolNames`、`platform`、`shellProfile` 和 `rules`。旧配置 `prompt: true|false` 仍然兼容：`true` 等同于 `full`，`false` 等同于 `off`。插件默认只在 Windows 启用，非 Windows 环境默认直接委托给 DSH。
+
+## 使用方法
+
+安装并重启 DSH 后，继续使用官方 `pwsh` 工具即可。Bridge 会自动检查目标工具的命令，不需要替换调用方式。
+
+本地开发检查：
 
 ```powershell
 npm test
-```
-
-Run the V1.2 checks directly:
-
-```powershell
-npm run benchmark  # reports BLOCKED when the official tokenizer is unavailable
-npm run check:dsh  # reports BLOCKED when the dsh CLI is unavailable
+npm run benchmark
+npm run check:dsh
 npm run pack:check
 ```
 
-The Rule API is documented in [`dsh-shell-bridge/README.md`](./dsh-shell-bridge/README.md). The current machine does not have the `dsh` CLI or an official tokenizer, so those two checks must remain `BLOCKED` until the corresponding tools are installed.
+`npm run benchmark` 没有官方 tokenizer 时输出 `BLOCKED`；`npm run check:dsh` 找不到 `dsh` CLI 时输出 `BLOCKED`。这两种状态不会被标记为 PASS。
 
-This forwards to the plugin's Node.js test suite. Node.js `22.19.0` or newer is required.
+## 输入与输出示例
 
-## License
+以下示例展示规则分析结果。实际 DSH hook 会把它转换为官方的 `allow`、`ask` 或 `deny` decision。
 
-MIT.
+| 输入命令 | PowerShell profile | 结果 | 规则 |
+| --- | --- | --- | --- |
+| `Get-ChildItem $HOME` | 7 | allow | 无 |
+| `Get-Item /c/Users/demo` | 7 | deny | `posix-path` |
+| `source script.sh` | 7 | deny | `source-command` |
+| `Get-Item a && Get-Item b` | 7 | allow | 无 |
+| `Get-Item a && Get-Item b` | 5.1 / unknown | ask | `and-and` |
+| `Get-Item (` | 7 | ask | `syntax-incomplete` |
+
+一条 finding 的结构如下：
+
+```json
+{
+  "id": "posix-path",
+  "severity": "high",
+  "confidence": "high",
+  "decision": "deny",
+  "message": "检测到明确的 /c/... POSIX 路径。",
+  "suggestion": "请改用原生 Windows 路径。"
+}
+```
+
+拒绝结果会返回原因和结构化错误信息；询问结果会返回 DSH 可显示的 `displayReason`；放行结果则继续调用 DSH 官方执行器。Bridge 不会修改原始命令文本。
+
+## 扩展规则
+
+可以通过 `createBuiltinRuleRegistry(profile, extraRules)` 创建包含内置规则的注册表，再用 `analyzeCommand(command, profile, registry)` 分析命令。规则必须提供唯一 `id`、整数 `priority` 和 `match(context)`，并返回统一 finding。优先级越高越先执行；规则异常会转换成保守的 `ask` finding。
+
+实现细节、兼容范围和扩展示例见 [`dsh-shell-bridge/README.md`](./dsh-shell-bridge/README.md)。V1.2 验收状态见 [`docs/v1.2-acceptance-report.md`](./docs/v1.2-acceptance-report.md)。
+
+## 许可证
+
+MIT
