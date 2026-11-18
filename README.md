@@ -1,4 +1,4 @@
-# DSH Shell Bridge
+# DSH Shell Bridge 1.2.1
 
 DSH Shell Bridge 是一个面向 Windows DSH + PowerShell 的 Cordis 插件。它在 DSH 官方 `tools/pre-execute` 执行前检查命令，识别常见的 Bash/Unix 写法，给出放行、询问或拒绝结果，帮助模型使用正确的 PowerShell 语法。
 
@@ -19,6 +19,9 @@ DSH Shell Bridge 是一个面向 Windows DSH + PowerShell 的 Cordis 插件。�
 - 提供可扩展 Rule Registry，支持规则注册、注销、查询、优先级和异常隔离。
 - 提供 tokenizer benchmark 和 DSH CLI 环境检查；缺少官方接口时明确输出 `BLOCKED`，不生成估算数据。
 - 支持 `promptMode: minimal | full | off`，关闭提示词不会关闭执行前检查。
+- 第三方规则使用不可变快照，决策按 `deny > ask > allow` 单调聚合。
+- Parser Adapter 可以从生产分析路径注入；复杂 fallback 输入无法确定时返回 `ask`。
+- Benchmark 明确区分 Full、Minimal、Off，Tokenizer 契约无效时保持 `BLOCKED`。
 
 ## 安装
 
@@ -55,7 +58,7 @@ dsh plugin --profile web add .\dsh-shell-bridge
     powershellVersion: 7   # 5.1 | 7 | unknown
 ```
 
-可选配置包括 `toolNames`、`platform`、`shellProfile` 和 `rules`。旧配置 `prompt: true|false` 仍然兼容：`true` 等同于 `full`，`false` 等同于 `off`。插件默认只在 Windows 启用，非 Windows 环境默认直接委托给 DSH。
+可选配置包括 `toolNames`、`platform`、`shellProfile`、`parserAdapter` 和 `rules`。旧配置 `prompt: true|false` 仍然兼容：`true` 等同于 `full`，`false` 等同于 `off`。插件默认只在 Windows 启用，非 Windows 环境默认直接委托给 DSH。
 
 ## 使用方法
 
@@ -70,7 +73,7 @@ npm run check:dsh
 npm run pack:check
 ```
 
-`npm run benchmark` 没有官方 tokenizer 时输出 `BLOCKED`；`npm run check:dsh` 找不到 `dsh` CLI 时输出 `BLOCKED`。这两种状态不会被标记为 PASS。
+`npm run benchmark` 没有有效的官方 tokenizer 时输出 `BLOCKED`；`npm run check:dsh` 找不到 `dsh` CLI 时输出 `BLOCKED`，已发现但版本探测失败时输出 `FAIL` 并返回非零退出码。这些状态不会被标记为 PASS。
 
 ## 输入与输出示例
 
@@ -100,11 +103,27 @@ npm run pack:check
 
 拒绝结果会返回原因和结构化错误信息；询问结果会返回 DSH 可显示的 `displayReason`；放行结果则继续调用 DSH 官方执行器。Bridge 不会修改原始命令文本。
 
+Hook 决策示例：
+
+```json
+// 合法 PowerShell：继续调用官方工具
+{ "kind": "allow" }
+
+// 需要确认：PowerShell 5.1 不支持 &&
+{ "kind": "ask", "reason": "无法确认 PowerShell 版本；&& 可能不受支持。" }
+
+// 明确 Bash/Unix 冲突：拒绝执行
+{
+  "kind": "deny",
+  "reason": "检测到明确的 /c/... POSIX 路径。请改用原生 Windows 路径。"
+}
+```
+
 ## 扩展规则
 
-可以通过 `createBuiltinRuleRegistry(profile, extraRules)` 创建包含内置规则的注册表，再用 `analyzeCommand(command, profile, registry)` 分析命令。规则必须提供唯一 `id`、整数 `priority` 和 `match(context)`，并返回统一 finding。优先级越高越先执行；规则异常会转换成保守的 `ask` finding。
+可以通过 `createBuiltinRuleRegistry(profile, extraRules)` 创建包含内置规则的注册表，再用 `analyzeCommand(command, profile, registry, parserAdapter)` 分析命令。规则必须提供唯一 `id`、整数 `priority` 和 `match(context)`，并返回统一 finding。优先级越高越先执行；规则异常会转换成保守的 `ask` finding，非法外部规则不会移除内置 Hook。
 
-实现细节、兼容范围和扩展示例见 [`dsh-shell-bridge/README.md`](./dsh-shell-bridge/README.md)。V1.2 验收状态见 [`docs/v1.2-acceptance-report.md`](./docs/v1.2-acceptance-report.md)。
+实现细节、兼容范围和扩展示例见 [`dsh-shell-bridge/README.md`](./dsh-shell-bridge/README.md)。V1.2.1 验收状态见 [`docs/v1.2-acceptance-report.md`](./docs/v1.2-acceptance-report.md)。真实 DSH、官方 Parser、官方 Tokenizer 和 Linux/PowerShell 环境不可用时仍会明确标记为 BLOCKED。
 
 ## 许可证
 
